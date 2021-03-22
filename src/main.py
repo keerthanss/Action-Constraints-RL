@@ -60,8 +60,7 @@ def generate_best_trajectory(env, agent):
 def main(lr, epsilon, gamma, decay_lr, decay_epsilon, modelfile):
     seed = 42
     np.random.seed(seed)
-    env = GridWorld(check_walls=True)
-    # env = GridWorld(check_walls=False)
+    env = GridWorld()
     agent = Agent(env.get_state_dims(), env.action_size, lr, epsilon, gamma, decay_lr, decay_epsilon, supervisor=True)
     exp_name = "gridworld_lr{}_ep{}_gamma{}_decaylr{}_decayep{}_s{}".format(lr, epsilon, gamma, decay_lr, decay_epsilon, seed)
 
@@ -70,7 +69,6 @@ def main(lr, epsilon, gamma, decay_lr, decay_epsilon, modelfile):
 
     for epochs in range(500000):
         s, done, trajectory, score, steps = env.reset(), False, [], 0, 0
-        print_traj = False
         while not done and steps < 60: #100:
             a = agent.Pi(s, env)
             sprime, r, done, interrupt = env.step(a)
@@ -78,12 +76,14 @@ def main(lr, epsilon, gamma, decay_lr, decay_epsilon, modelfile):
             if not interrupt:
                 agent.update(s, a, r, sprime, done)
             else:
+                # interrupt service routine will handle it
+                # do not update Q table's values
                 action_dict = {0: Action.Drop1, 1:Action.Drop2, 2:Action.Drop3, 3:Action.Pick1, 4:Action.Pick2, 5:Action.Pick3}
                 s = env.ar.get_state() - 1 if env.ar.is_active() else 5
+                # for easy debugging purposes
                 a2 = action_dict[s]
-                # print_traj = True
 
-            trajectory.append([s,a,a2, r, sprime, done])
+            trajectory.append([s,a, a2, r, sprime, done])
             s = sprime
             score += r
             steps += 1
@@ -93,7 +93,7 @@ def main(lr, epsilon, gamma, decay_lr, decay_epsilon, modelfile):
         logger.update(epochs, score, steps, env)
         if epochs % print_freq == print_freq - 1:
             logger.log(epochs)
-            print(generate_best_trajectory(env, agent))
+            # print(generate_best_trajectory(env, agent))
             agent.decay()
 
     f = open(modelfile, "wb")
@@ -102,12 +102,12 @@ def main(lr, epsilon, gamma, decay_lr, decay_epsilon, modelfile):
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser("Gridworld with Non-Markovian Task and Action Constraints")
-    parser.add_argument("--lr", type=float, help="Learning Rate", default=0.01)
+    parser.add_argument("--lr", type=float, help="Learning Rate", default=0.1)
     parser.add_argument("--epsilon", type=float, help="The epsilon probability assigned to picking actions other than the best one. \
-                                        The default value calibrates such that best action receives 50% probability.", default=0)
-    parser.add_argument("--gamma", type=float, help="Discount rate", default=1)
+                                        Value 0 calibrates such that best action receives 50% probability.", default=0.25)
+    parser.add_argument("--gamma", type=float, help="Discount rate", default=0.9)
     parser.add_argument("--decay_lr", type=float, help="Decay rate for learning rate", default=1)
-    parser.add_argument("--decay_epsilon", type=float, help="Decay rate for epsilon", default=1)
+    parser.add_argument("--decay_epsilon", type=float, help="Decay rate for epsilon", default=0.95)
     parser.add_argument("--model_file", type=str, help="Name of the pickle file with which to save the Agent", default="model.pickle")
     args = parser.parse_args()
     main(args.lr, args.epsilon, args.gamma, args.decay_lr, args.decay_epsilon, args.model_file)

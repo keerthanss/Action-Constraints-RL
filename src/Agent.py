@@ -12,7 +12,6 @@ class Agent:
         self.dim_sizes = state_dims
         # useful for index calculation
         self.cum_mult = np.array([np.prod(state_dims[i+1:]) for i in range(self.num_indices)])
-        # print(self.dim_sizes, self.cum_mult)
 
         total_state_dim = np.prod(state_dims)
         # self.Qtable = np.random.rand(total_state_dim, num_actions)
@@ -44,7 +43,6 @@ class Agent:
     # helper function to obtain best action and its Q value
     def Qmax(self,s):
         s_index = self._state_index(s)
-        # print(s, s_index)
         view = self.Qtable[s_index]
         action = np.argmax(view)
         return action, view[action]
@@ -62,7 +60,6 @@ class Agent:
             for action in range(self.num_actions):
                 check_illegal = env.step(action, commit=False)
                 if check_illegal:
-                    # print(s,action, " is Illegal")
                     legal[action] = False
                     total_illegal_prob += prob_wts[action]
                     prob_wts[action] = 0
